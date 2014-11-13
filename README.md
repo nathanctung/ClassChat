@@ -1,4 +1,4 @@
 ClassChat
 =========
 
-Short-range Bluetooth-based chatting application (CS M117)
+Short-range-Bluetooth Android-based chatting app (CS M117)

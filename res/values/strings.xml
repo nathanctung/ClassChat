@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">ClassChat</string>
+    <string name="title_activity_main">ClassChat</string>
+    <string name="classchat_title">Welcome to ClassChat!</string>
+    <string name="action_settings">Settings</string>
+
+</resources>
