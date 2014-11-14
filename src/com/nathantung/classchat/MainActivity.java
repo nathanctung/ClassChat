@@ -23,8 +23,9 @@ import android.widget.Toast;
 
 public class MainActivity extends Activity {
 	
-	private static final int BLUETOOTH_REQUEST_ENABLE = 1;
+	private static final int REQUEST_ENABLE_BT = 1;
 	private Button btnToggle;
+	private Button btnDiscoverable;
 	private Button btnPaired;
 	private Button btnSearch;
 	private BluetoothAdapter adapter;
@@ -47,6 +48,7 @@ public class MainActivity extends Activity {
 			
 			// disable buttons
 			btnToggle.setEnabled(false);
+			btnDiscoverable.setEnabled(false);
 			btnPaired.setEnabled(false);
 			btnSearch.setEnabled(false);
 		}
@@ -68,6 +70,15 @@ public class MainActivity extends Activity {
 			else
 				btnToggle.setText("STATUS: OFF");
 
+			// setup Bluetooth discoverable (visible) button
+			btnDiscoverable = (Button) findViewById(R.id.bluetoothDiscoverable);
+			btnDiscoverable.setOnClickListener(new OnClickListener() {
+				@Override
+				public void onClick(View v) {
+					setDiscoverable(v);
+				}
+			});
+			
 			// setup Bluetooth paired button
 			btnPaired = (Button) findViewById(R.id.bluetoothPaired);
 			btnPaired.setOnClickListener(new OnClickListener() {
@@ -100,7 +111,7 @@ public class MainActivity extends Activity {
 			// if adapter is not enabled, start Bluetooth
 			Intent intent = new Intent(adapter.ACTION_REQUEST_ENABLE);
 			// overriden method checks actual Bluetooth status post-prompt, updates button text
-			startActivityForResult(intent, BLUETOOTH_REQUEST_ENABLE);
+			startActivityForResult(intent, REQUEST_ENABLE_BT);
 		}
 		else {
 			// otherwise, Bluetooth is enabled, so we disable it
@@ -112,14 +123,21 @@ public class MainActivity extends Activity {
 	
 	@Override
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-		if(requestCode==BLUETOOTH_REQUEST_ENABLE) {
+		if(requestCode==REQUEST_ENABLE_BT) {
 			if(adapter.isEnabled())
 				btnToggle.setText("STATUS: ON");
 			else
 				btnToggle.setText("STATUS: OFF");
 		}
 	}
-		
+	
+	protected void setDiscoverable(View v) {
+		// start intent to make device visible/discoverable to other devices
+		Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+		//intent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION,  300);
+		startActivity(intent);
+	}
+	
 	protected void showPairedDevices(View v) {
 		// fetch devices currently paired with adapter
 		devices = adapter.getBondedDevices();
