@@ -5,5 +5,8 @@
     <string name="title_activity_main">ClassChat</string>
     <string name="classchat_title">Welcome to ClassChat!</string>
     <string name="action_settings">Settings</string>
+    <string name="bluetooth_toggle">ON/OFF</string>
+    <string name="bluetooth_paired">Paired Devices</string>
+    <string name="bluetooth_search">Search Devices</string>
 
 </resources>
