@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+    
+	<PreferenceCategory android:title="Settings">
+        <EditTextPreference
+            android:title="User Alias"
+            android:summary="How your name appear to others"
+            android:defaultValue="ClassChatter"
+            android:key="prefScreenName" />
+        
+        <ListPreference
+            android:title="Discoverability Time"
+            android:summary="How long your device will be visible to others"
+            android:entries="@array/discoverableTime"
+            android:entryValues="@array/discoverableTimeValues"
+            android:defaultValue="120"
+            android:key="prefDiscoverableTime" />
+            
+    </PreferenceCategory>
+
+</PreferenceScreen>
