@@ -1,23 +1,9 @@
 package com.nathantung.classchat;
 
-import android.annotation.TargetApi;
-import android.content.Context;
-import android.content.res.Configuration;
-import android.media.Ringtone;
-import android.media.RingtoneManager;
-import android.net.Uri;
-import android.os.Build;
+import android.app.ActionBar;
 import android.os.Bundle;
-import android.preference.ListPreference;
-import android.preference.Preference;
 import android.preference.PreferenceActivity;
-import android.preference.PreferenceCategory;
-import android.preference.PreferenceFragment;
-import android.preference.PreferenceManager;
-import android.preference.RingtonePreference;
-import android.text.TextUtils;
-
-import java.util.List;
+import android.view.MenuItem;
 
 
 public class SettingsActivity extends PreferenceActivity {
@@ -28,7 +14,23 @@ public class SettingsActivity extends PreferenceActivity {
 		super.onCreate(savedInstanceState);
 		
 		// use settings XML (pref_settings.xml) as resource
-		addPreferencesFromResource(R.xml.pref_settings);		
+		addPreferencesFromResource(R.xml.pref_settings);
+		
+		// set up action bar with "go to home" feature
+		ActionBar actionBar = getActionBar();
+		actionBar.setHomeButtonEnabled(true);
+	}
+	
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+	    switch (item.getItemId()) {
+	        case android.R.id.home:
+	            // action bar "go to home" clicked; close settings activity
+	            this.finish();
+	            return true;
+	        default:
+	            return super.onOptionsItemSelected(item);
+	    }
 	}
 	
 }

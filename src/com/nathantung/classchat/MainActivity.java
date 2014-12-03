@@ -7,12 +7,14 @@ import java.util.Set;
 import java.util.UUID;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -34,9 +36,8 @@ import android.widget.Toast;
 public class MainActivity extends Activity {
 	
 	// STATIC APP INFORMATION
-	public static final String UUID_STRING = "1b6e87f1-39f9-4ee9-93eb-a454c48bd2f5";
 	public static final String SERVICE_STRING = "ClassChat";
-	public static UUID APP_UUID;
+	public static final UUID APP_UUID = UUID.fromString("1b6e87f1-39f9-4ee9-93eb-a454c48bd2f5");
 	
 	// APP VARIABLES
 	private static final int REQUEST_ENABLE_BT = 1;
@@ -71,9 +72,6 @@ public class MainActivity extends Activity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		
-		// obtain application UUID
-		APP_UUID = UUID.fromString(UUID_STRING);
-		
 		// grab preferences and saved variables
 		preferences = PreferenceManager.getDefaultSharedPreferences(this);
 		
@@ -82,13 +80,20 @@ public class MainActivity extends Activity {
 		
 		// checking whether adapter is instanced tells us if Bluetooth is supported
 		if(adapter==null) {
-			Toast.makeText(getApplicationContext(), "Bluetooth is not supported on your device!", Toast.LENGTH_LONG).show();
 			
-			// disable buttons
-			btnToggle.setEnabled(false);
-			btnDiscoverable.setEnabled(false);
-			btnPaired.setEnabled(false);
-			btnSearch.setEnabled(false);
+			AlertDialog.Builder builder = new AlertDialog.Builder(this);
+			builder.setMessage("Bluetooth is not supported on your device!")
+			       .setCancelable(false)
+			       .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+			           public void onClick(DialogInterface dialog, int id) {
+			        	   finish();
+			           }
+			       });
+			AlertDialog alert = builder.create();
+			alert.show();
+			
+			// Toast.makeText(getApplicationContext(), "Bluetooth is not supported on your device!", Toast.LENGTH_LONG).show();
+			
 		}
 		else {
 			Toast.makeText(getApplicationContext(), "Congratulations, Bluetooth is supported!", Toast.LENGTH_SHORT).show();
@@ -147,11 +152,7 @@ public class MainActivity extends Activity {
 					setupConnection(v, position); 
 					
 				}
-			});
-			
-
-			
-			
+			});			
 		}
 	}
 
@@ -245,8 +246,26 @@ public class MainActivity extends Activity {
 
 	protected void setupConnection(View v, int position) {
 		
-		Toast.makeText(getApplicationContext(), arrayAdapter.getItem(position), Toast.LENGTH_SHORT).show();
-		//BluetoothDevice device = adapter.getRemoteDevice("MAC ADDRESS");
+		// obtain mac address of clicked device
+		String deviceDescriptor = arrayAdapter.getItem(position);
+		int length = deviceDescriptor.length();
+		String mac = deviceDescriptor.substring(length-17, length);
+		Toast.makeText(getApplicationContext(), mac, Toast.LENGTH_SHORT).show();
+		
+		// reconstruct device using mac address
+		BluetoothDevice device = adapter.getRemoteDevice(mac);
+		
+		 // Cancel any thread attempting to make a connection
+		if (mConnectThread != null) {mConnectThread.cancel(); mConnectThread = null;}
+		
+		// Cancel any thread currently running a connection
+		if (mConnectedThread != null) {mConnectedThread.cancel(); mConnectedThread = null;}
+		
+		// Start the thread to listen on a BluetoothServerSocket
+		if (mAcceptThread == null) {
+			mAcceptThread = new AcceptThread();
+			mAcceptThread.start();
+		}
 		
 	}
 	
