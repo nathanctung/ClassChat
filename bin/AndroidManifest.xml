@@ -16,6 +16,7 @@
         android:icon="@drawable/ic_launcher"
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
+        
         <activity
             android:name=".MainActivity"
             android:label="@string/title_activity_main" >
@@ -24,14 +25,18 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-                <activity
+        
+        <activity
             android:name=".BluetoothMessage"
+            android:launchMode="singleTask"
             android:label="ClassChat Message" >
         </activity>
+        
         <activity
             android:name=".SettingsActivity"
             android:label="@string/title_activity_settings" >
         </activity>
+        
     </application>
 
 </manifest>

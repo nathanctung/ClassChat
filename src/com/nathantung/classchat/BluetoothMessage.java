@@ -1,6 +1,9 @@
 package com.nathantung.classchat;
 
+import android.app.ActionBar;
 import android.app.Activity;
+import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
@@ -11,24 +14,47 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 public class BluetoothMessage extends Activity {
 
+	public static BluetoothConnection myConnection = null;
+	public static ActionBar actionBar;
+	
     // Layout Views
     private ListView mConversationView;
     private EditText mOutEditText;
     private Button mSendButton;
     private ArrayAdapter<String> mConversationArrayAdapter;
 
+    // MainActivity Variables
+	private StringBuffer mOutStringBuffer;
+
+	
+	/*
+		Configuration config = getResources().getConfiguration();
+		FragmentManager fragmentManager = getSupportFragmentManager();
+		FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+		
+		Fragment messageFragment = new MessageFragment();
+		fragmentTransaction.replace(android.R.id.content, messageFragment);		
+		fragmentTransaction.commit();
+    */
+	
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_message);
 		
+		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+		
+		actionBar = getActionBar();
 		
 		// Initialize the array adapter for the conversation thread
-        mConversationArrayAdapter = new ArrayAdapter<String>(this, R.layout.activity_message);
+        //mConversationArrayAdapter = new ArrayAdapter<String>(this, R.layout.single_message, R.id.messageText);
+        mConversationArrayAdapter = new ArrayAdapter<String>(this, R.layout.single_message);
         mConversationView = (ListView) findViewById(R.id.messageListView);
         mConversationView.setAdapter(mConversationArrayAdapter);
 
@@ -46,33 +72,52 @@ public class BluetoothMessage extends Activity {
                 sendMessage(message);
             }
         });
-				
+
+		// Initialize the buffer for outgoing messages
+		mOutStringBuffer = new StringBuffer("");
+		
+	}
+	
+	@Override
+	protected void onNewIntent(Intent intent) {
+		  super.onNewIntent(intent);
+		  
+		  // set getIntent() to return this new intent
+		  setIntent(intent);
+		  
+		  Intent currIntent= getIntent();
+		  
+		  Bundle extras = currIntent.getExtras();
+		  
+		  if(extras!=null) {
+			  String line = currIntent.getExtras().getString("new_line");
+			  
+			  if(line!=null)
+				  mConversationArrayAdapter.add(line);
+		  }
+		  
 	}
 	
     private void sendMessage(String message) {
-        // Check that we're actually connected before trying anything
-        
-    	/*
-    	
-    	if (connection.getState() != BluetoothConnection.STATE_CONNECTED) {
+
+    	// Check that we're actually connected before trying anything
+
+    	if (myConnection.getState() != BluetoothConnection.STATE_CONNECTED) {
             Toast.makeText(this, R.string.not_connected, Toast.LENGTH_SHORT).show();
             return;
         }
 
-	*/
-    	
         // Check that there's actually something to send
         if (message.length() > 0) {
             // Get the message bytes and tell the BluetoothChatService to write
             byte[] send = message.getBytes();
-            //mChatService.write(send);
+            myConnection.write(send);
 
             // Reset out string buffer to zero and clear the edit text field
-            //mOutStringBuffer.setLength(0);
-            //mOutEditText.setText(mOutStringBuffer);
-            		mOutEditText.setText("");
+            mOutStringBuffer.setLength(0);
+            mOutEditText.setText(mOutStringBuffer);
+            
         }	
-        
     }
 
     // The action listener for the EditText widget, to listen for the return key
@@ -87,5 +132,19 @@ public class BluetoothMessage extends Activity {
             return true;
         }
     };
-	
+    
+    @Override
+	public void onDestroy() {
+		super.onDestroy();
+
+		if(myConnection.getState()==BluetoothConnection.STATE_CONNECTED) {
+		
+			if(mConversationArrayAdapter!=null)
+				mConversationArrayAdapter.add("CONNECTION TERMINATED!");
+			
+			myConnection.endConnection();
+		}
+		
+	}
+    
 }

@@ -13,24 +13,22 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
 import android.util.Log;
-import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.inputmethod.EditorInfo;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
-import android.widget.TextView;
 import android.widget.Toast;
 
 // Bluetooth implementation based on http://examples.javacodegeeks.com/android/core/bluetooth/bluetoothadapter/android-bluetooth-example/
@@ -84,6 +82,8 @@ public class MainActivity extends Activity {
 		
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+
+		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 		
 		// grab preferences and saved variables
 		preferences = PreferenceManager.getDefaultSharedPreferences(this);
@@ -202,35 +202,32 @@ public class MainActivity extends Activity {
 	}
 	
 	private void setupChat() {
-
-		/*
-		// Initialize the array adapter for the conversation thread
-		mConversationArrayAdapter = new ArrayAdapter<String>(this, R.layout.message);
-		mConversationView = (ListView) findViewById(R.id.in);
-		mConversationView.setAdapter(mConversationArrayAdapter);
-		
-		// Initialize the compose field with a listener for the return key
-		mOutEditText = (EditText) findViewById(R.id.edit_text_out);
-		mOutEditText.setOnEditorActionListener(mWriteListener);
-		
-		// Initialize the send button with a listener that for click events
-		mSendButton = (Button) findViewById(R.id.button_send);
-		mSendButton.setOnClickListener(new OnClickListener() {
-			public void onClick(View v) {
-		
-			// Send a message using content of the edit text widget
-			TextView view = (TextView) findViewById(R.id.edit_text_out);
-			String message = view.getText().toString();
-			sendMessage(message);
-			}
-		});
-		*/
-		
+        
 		// Initialize the BluetoothConnection to perform bluetooth connections
 		connection = new BluetoothConnection(this, mHandler);
-		// Initialize the buffer for outgoing messages
-		mOutStringBuffer = new StringBuffer("");
+		
+	}
+	
+	protected void setupConnection(View v, int position) {
+		
+		// obtain mac address of clicked device
+		String deviceDescriptor = arrayAdapter.getItem(position);
+		int length = deviceDescriptor.length();
+		String mac = deviceDescriptor.substring(length-17, length);
+		
+		// reconstruct device using mac address
+		BluetoothDevice device = adapter.getRemoteDevice(mac);
+		
+		Boolean secure = false;
+		
+		connection.connect(device, secure);
 
+		/*
+		BluetoothMessage.myConnection = connection;
+		Intent intent = new Intent(getApplicationContext(), BluetoothMessage.class);
+		startActivity(intent);
+		*/
+		
 	}
 	
 	@Override
@@ -240,45 +237,20 @@ public class MainActivity extends Activity {
 		if (connection != null) connection.stop();
 	}
 	
-	private void sendMessage(String message) {
-		// Check that we're actually connected before trying anything
-		if (connection.getState() != BluetoothConnection.STATE_CONNECTED) {
-			Toast.makeText(this, R.string.not_connected, Toast.LENGTH_SHORT).show();
-			return;
-		}
-		
-		// Check that there's actually something to send
-		if (message.length() > 0) {
-			// Get the message bytes and tell the BluetoothConnection to write
-			byte[] send = message.getBytes();
-			connection.write(send);
-			// Reset out string buffer to zero and clear the edit text field
-			mOutStringBuffer.setLength(0);
-			mOutEditText.setText(mOutStringBuffer);
-		}
-	}
-	
-	// The action listener for the EditText widget, to listen for the return key
-	private TextView.OnEditorActionListener mWriteListener = new TextView.OnEditorActionListener() {
-		public boolean onEditorAction(TextView view, int actionId, KeyEvent event) {
-			// If the action is a key-up event on the return key, send the message
-			if (actionId == EditorInfo.IME_NULL && event.getAction() == KeyEvent.ACTION_UP) {
-				String message = view.getText().toString();
-				sendMessage(message);
-			}
-			
-			return true;
-		}
-	};
-	
     private final void setStatus(int resId) {
         final ActionBar actionBar = getActionBar();
         actionBar.setSubtitle(resId);
+        
+        if(BluetoothMessage.actionBar!=null)
+        	BluetoothMessage.actionBar.setSubtitle(resId);
     }
 
     private final void setStatus(CharSequence subTitle) {
         final ActionBar actionBar = getActionBar();
         actionBar.setSubtitle(subTitle);
+        
+        if(BluetoothMessage.actionBar!=null)
+        	BluetoothMessage.actionBar.setSubtitle(subTitle);
     }
 	
 	private final Handler mHandler = new Handler() {
@@ -286,51 +258,56 @@ public class MainActivity extends Activity {
         public void handleMessage(Message msg) {
             switch (msg.what) {
             case MESSAGE_STATE_CHANGE:
-        		Log.d("MESSAGE STATE CHANGE", "AHHHHH");
                 switch (msg.arg1) {
                 case BluetoothConnection.STATE_CONNECTED:
-            		Log.d("CONNECTED", "AHHHHH");
                     setStatus(getString(R.string.title_connected_to, mConnectedDeviceName));
-            		Log.d("CLEAR ATTEMPT", "AHHHHH");
                     //mConversationArrayAdapter.clear();
-            		Log.d("CLEARED?", "AHHHHH");
                     break;
                 case BluetoothConnection.STATE_CONNECTING:
-            		Log.d("CONNECTING", "AHHHHH");
                     setStatus(R.string.title_connecting);
                     break;
                 case BluetoothConnection.STATE_LISTEN:
                 case BluetoothConnection.STATE_NONE:
-            		Log.d("LISTEN OR NONE", "AHHHHH");
+                case BluetoothConnection.STATE_BUSY:
                     setStatus(R.string.title_not_connected);
                     break;
                 }
                 break;
             case MESSAGE_WRITE:
-            	Log.d("MESSAGE WRITE", "AHHHHH");
                 byte[] writeBuf = (byte[]) msg.obj;
                 // construct a string from the buffer
                 String writeMessage = new String(writeBuf);
-                mConversationArrayAdapter.add("Me:  " + writeMessage);
+                //mConversationArrayAdapter.add("Me:  " + writeMessage);
+                String writeLine = "Me:  " + writeMessage;
+                Intent intent_write = new Intent(getApplicationContext(), BluetoothMessage.class);
+                intent_write.putExtra("new_line", writeLine);
+        		startActivity(intent_write);
+                
                 break;
             case MESSAGE_READ:
-            	Log.d("MESSAGE READ", "AHHHHH");
                 byte[] readBuf = (byte[]) msg.obj;
                 // construct a string from the valid bytes in the buffer
                 String readMessage = new String(readBuf, 0, msg.arg1);
-                mConversationArrayAdapter.add(mConnectedDeviceName+":  " + readMessage);
+                //mConversationArrayAdapter.add(mConnectedDeviceName + ":  " + readMessage);
+                String readLine = mConnectedDeviceName + ":  " + readMessage;
+                Intent intent_read = new Intent(getApplicationContext(), BluetoothMessage.class);
+                intent_read.putExtra("new_line", readLine);
+        		startActivity(intent_read);
+                
+                
                 break;
             case MESSAGE_DEVICE_NAME:
-            	Log.d("MESSAGE DEVICE NAME", "AHHHHH");
                 // save the connected device's name
                 mConnectedDeviceName = msg.getData().getString(DEVICE_NAME);
-                Toast.makeText(getApplicationContext(), "Connected to "
-                               + mConnectedDeviceName, Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), "Connected to " + mConnectedDeviceName, Toast.LENGTH_SHORT).show();
+                
+                BluetoothMessage.myConnection = connection;
+        		Intent intent_new = new Intent(getApplicationContext(), BluetoothMessage.class);
+        		startActivity(intent_new);
+        		
                 break;
             case MESSAGE_TOAST:
-            	Log.d("MESSAGE TOAST", "AHHHHH");
-                Toast.makeText(getApplicationContext(), msg.getData().getString(TOAST),
-                               Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), msg.getData().getString(TOAST), Toast.LENGTH_SHORT).show();
                 break;
             }
         }
@@ -420,47 +397,6 @@ public class MainActivity extends Activity {
 		
 	}
 
-	protected void setupConnection(View v, int position) {
-		
-		// obtain mac address of clicked device
-		String deviceDescriptor = arrayAdapter.getItem(position);
-		int length = deviceDescriptor.length();
-		String mac = deviceDescriptor.substring(length-17, length);
-		
-		//Toast.makeText(getApplicationContext(), mac, Toast.LENGTH_SHORT).show();
-		
-		// reconstruct device using mac address
-		BluetoothDevice device = adapter.getRemoteDevice(mac);
-		
-		connection.connect(device);
-		
-		Intent intent = new Intent(getApplicationContext(), BluetoothMessage.class);
-		startActivity(intent);
-		
-        // Create the result Intent and include the MAC address
-//        Intent intent = new Intent();
-//        intent.putExtra(EXTRA_DEVICE_ADDRESS, mac);
-
-        
-        // Set result and finish this Activity
-//        setResult(Activity.RESULT_OK, intent);
-        //finish();
-	}
-	
-	
-/*
-	
-	private void connectDevice(Intent data, boolean secure) {
-        // Get the device MAC address
-        String address = data.getExtras().getString(this.EXTRA_DEVICE_ADDRESS);
-        // Get the BluetoothDevice object
-        BluetoothDevice device = adapter.getRemoteDevice(address);
-        // Attempt to connect to the device
-        connection.connect(device);
-    }
-
-*/
-
 /* SETTINGS ICON AND ACTIVITY */	
 	
 	@Override
@@ -486,42 +422,16 @@ public class MainActivity extends Activity {
 			String time = preferences.getString("prefDiscoverableTime", "120");
 			
 			if(time.equals("0")) {
-				Toast.makeText(getApplicationContext(), "Welcome, " + name + "!\n"
+				Toast.makeText(getApplicationContext(), "Hello " + name + "!\n"
 						+ "After clicking \"Allow Visibility\", you will currently be indefinitely discoverable.", Toast.LENGTH_SHORT).show();
 			}
 			
-			Toast.makeText(getApplicationContext(), "Welcome, " + name + "!\n"
+			Toast.makeText(getApplicationContext(), "Hello " + name + "!\n"
 					+ "After clicking \"Allow Visibility\", you will currently be discoverable for "+ time + " seconds.", Toast.LENGTH_SHORT).show();			
 			
 			return true;
 		}
 		return super.onOptionsItemSelected(item);
 	}
-	
-/*
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        Intent serverIntent = null;
-        switch (item.getItemId()) {
-        case R.id.secure_connect_scan:
-            // Launch the DeviceListActivity to see devices and do scan
-            serverIntent = new Intent(this, DeviceListActivity.class);
-            startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
-            return true;
-        case R.id.insecure_connect_scan:
-            // Launch the DeviceListActivity to see devices and do scan
-            serverIntent = new Intent(this, DeviceListActivity.class);
-            startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_INSECURE);
-            return true;
-        case R.id.discoverable:
-            // Ensure this device is discoverable by others
-            ensureDiscoverable();
-            return true;
-        }
-        return false;
-    }
-*/
-	
-	
 	
 }
