@@ -23,21 +23,48 @@
         android:orientation="vertical" >
 
         <Button
-            android:id="@+id/bluetoothPaired"
+            android:id="@+id/bluetoothFetchDevices"
+            style="?android:attr/buttonStyleSmall"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/bluetooth_paired" />
-
-        <Button
-            android:id="@+id/bluetoothSearch"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/bluetooth_search" />
-
+            android:text="Fetch Devices" />
+        
+		<TextView android:id="@+id/pairedListViewTitle"
+	        android:layout_width="match_parent"
+	        android:layout_height="wrap_content"
+	        android:text="Paired Devices" />
+       	
         <ListView
-            android:id="@+id/listView"
+            android:id="@+id/pairedListView"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:stackFromBottom="true"
+            android:layout_weight="1" />
+
+        <TextView android:id="@+id/recommendedListViewTitle"
+	        android:layout_width="match_parent"
+	        android:layout_height="wrap_content"
+	        android:text="Recommended Devices" />
+        
+        <ListView
+            android:id="@+id/recommendedListView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:stackFromBottom="true"
+            android:layout_weight="2" />
+        
+        <TextView android:id="@+id/otherListViewTitle"
+	        android:layout_width="match_parent"
+	        android:layout_height="wrap_content"
+	        android:text="Other Devices" />
+        
+        <ListView
+            android:id="@+id/otherListView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:stackFromBottom="true"
+            android:layout_weight="3" />
+        
     </LinearLayout>
 
     <Button
@@ -48,7 +75,7 @@
         android:layout_alignBottom="@+id/bluetoothToggle"
         android:layout_alignTop="@+id/bluetoothToggle"
         android:layout_toRightOf="@+id/bluetoothToggle"
-        android:text="Allow Visibility" />
+        android:text="Go Visible" />
 
     <Button
         android:id="@+id/bluetoothToggle"

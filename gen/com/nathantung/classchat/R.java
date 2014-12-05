@@ -33,16 +33,20 @@ public final class R {
         public static final int ic_launcher=0x7f020000;
     }
     public static final class id {
-        public static final int action_settings=0x7f0a000a;
-        public static final int bluetoothDiscoverable=0x7f0a0005;
-        public static final int bluetoothPaired=0x7f0a0002;
-        public static final int bluetoothSearch=0x7f0a0003;
-        public static final int bluetoothToggle=0x7f0a0006;
+        public static final int action_settings=0x7f0a000e;
+        public static final int bluetoothDiscoverable=0x7f0a0009;
+        public static final int bluetoothFetchDevices=0x7f0a0002;
+        public static final int bluetoothToggle=0x7f0a000a;
         public static final int linearLayout1=0x7f0a0001;
-        public static final int listView=0x7f0a0004;
-        public static final int messageEditText=0x7f0a0008;
-        public static final int messageListView=0x7f0a0007;
-        public static final int messageSend=0x7f0a0009;
+        public static final int messageEditText=0x7f0a000c;
+        public static final int messageListView=0x7f0a000b;
+        public static final int messageSend=0x7f0a000d;
+        public static final int otherListView=0x7f0a0008;
+        public static final int otherListViewTitle=0x7f0a0007;
+        public static final int pairedListView=0x7f0a0004;
+        public static final int pairedListViewTitle=0x7f0a0003;
+        public static final int recommendedListView=0x7f0a0006;
+        public static final int recommendedListViewTitle=0x7f0a0005;
         public static final int textStatus=0x7f0a0000;
     }
     public static final class layout {
