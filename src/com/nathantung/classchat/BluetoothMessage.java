@@ -1,7 +1,14 @@
 package com.nathantung.classchat;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+
 import android.app.ActionBar;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
@@ -146,5 +153,58 @@ public class BluetoothMessage extends Activity {
 		}
 		
 	}
+    
+    public void saveToFile() {
+    	
+    	if(mConversationArrayAdapter!=null) {
+
+        	File file = getFileStreamPath("test.txt");
+
+        	if (!file.exists()) {
+        	   try {
+				file.createNewFile();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+        	}
+
+        	FileOutputStream writer;
+			try {
+				writer = openFileOutput(file.getName(), Context.MODE_PRIVATE);
+				
+				for(int i=0; i< mConversationArrayAdapter.getCount(); i++) {
+	        		String line = mConversationArrayAdapter.getItem(i);
+	        		try {
+						writer.write(line.getBytes());
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+	        	    try {
+						writer.flush();
+					} catch (IOException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+	        	}
+
+				try {
+					writer.close();
+				} catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+
+				
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+    	}
+    	else {
+    		Toast.makeText(getApplicationContext(), "No conversation to save!", Toast.LENGTH_LONG).show();
+    	}
+    }
     
 }
