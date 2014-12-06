@@ -1,18 +1,21 @@
 package com.nathantung.classchat;
 
+import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Calendar;
 
 import android.app.ActionBar;
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
+import android.os.Environment;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.inputmethod.EditorInfo;
@@ -154,57 +157,86 @@ public class BluetoothMessage extends Activity {
 		
 	}
     
+    /*
+     * 
+     * new File(getFilesDir(), "ClassChat"); // /data/data/com.nathantung.classchat/files/ClassChat
+     * getApplicationContext().getDir("Test", Context.MODE_PRIVATE); // /data /data/data/com.nathantung.classchat/app_Test
+     * Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS); // /storage/emulated/0/Download 
+     * Environment.getExternalStorageDirectory(); // /storage/emulated/0
+     * Environment.getDataDirectory(); // /data
+     * 
+     */
+    
     public void saveToFile() {
+
+		File path = new File(Environment.getExternalStorageDirectory(), "ClassChat"); // /storage/emulated/0/ClassChat
+		path.mkdirs();
+
+		Calendar c = Calendar.getInstance();
+		String fileName = "convo-"+c.get(Calendar.MONTH)+"-"+c.get(Calendar.DATE)+"-"+c.get(Calendar.YEAR)+"-"+c.get(Calendar.HOUR)+c.get(Calendar.MINUTE)+c.get(Calendar.SECOND)+".txt";
+		
+		File file = new File(path, fileName);
     	
     	if(mConversationArrayAdapter!=null) {
-
-        	File file = getFileStreamPath("test.txt");
-
-        	if (!file.exists()) {
-        	   try {
-				file.createNewFile();
+    		
+    		if(!file.exists()) {
+    			try {
+    				file.createNewFile();
+    			} catch (IOException e) {
+					Toast.makeText(getApplicationContext(), "File cannot be created!", Toast.LENGTH_LONG).show();
+    			}
+    		}
+    		
+    		try {
+				BufferedWriter buf = new BufferedWriter(new FileWriter(file));
+				
+				// write every line in array adapter to file
+				for(int i=0; i< mConversationArrayAdapter.getCount(); i++) {
+	        		String line = mConversationArrayAdapter.getItem(i);
+	        		buf.write(line, 0, line.length());
+	        		buf.newLine();
+	        		buf.flush();
+	        	}
+				
+				buf.close();
+				
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
+				Toast.makeText(getApplicationContext(), "Could not write to file!", Toast.LENGTH_LONG).show();
 			}
-        	}
-
-        	FileOutputStream writer;
-			try {
-				writer = openFileOutput(file.getName(), Context.MODE_PRIVATE);
-				
-				for(int i=0; i< mConversationArrayAdapter.getCount(); i++) {
-	        		String line = mConversationArrayAdapter.getItem(i);
-	        		try {
-						writer.write(line.getBytes());
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-	        	    try {
-						writer.flush();
-					} catch (IOException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-	        	}
-
-				try {
-					writer.close();
-				} catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-
-				
-			} catch (FileNotFoundException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+    		
+    		Toast.makeText(getApplicationContext(), "Saved as " + fileName, Toast.LENGTH_LONG).show();
+    		
     	}
     	else {
     		Toast.makeText(getApplicationContext(), "No conversation to save!", Toast.LENGTH_LONG).show();
     	}
+    	
     }
+    
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.message, menu);
+        return true;
+    }
+    
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+    	switch (item.getItemId()) {
+    	case R.id.action_save:
+    		//Toast.makeText(this, "Saving conversation!", Toast.LENGTH_SHORT).show();
+    		saveToFile();
+    		break;
+    	case R.id.action_camera:
+    		Toast.makeText(this, "Launching camera!", Toast.LENGTH_SHORT).show();
+    		break;
+    	default:
+    		break;
+    	}
+    	
+    	return true;
+    } 
     
 }

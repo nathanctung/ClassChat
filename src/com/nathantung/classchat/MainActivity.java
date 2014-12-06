@@ -33,8 +33,9 @@ import android.widget.Toast;
 
 /*
 
+STORIES TO IMPLEMENT:
 -save contacts
--transcribe chat
+-save conversation
 -recent connections
 -recommended connections
 -picture transfer
