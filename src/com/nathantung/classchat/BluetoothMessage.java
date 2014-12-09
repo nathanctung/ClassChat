@@ -10,8 +10,11 @@ import android.app.ActionBar;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
+import android.database.Cursor;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.provider.MediaStore;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -40,6 +43,8 @@ public class BluetoothMessage extends Activity {
     // MainActivity Variables
 	private StringBuffer mOutStringBuffer;
 
+	// Activity States
+    public static final int IMAGE_PATH_BROWSE = 5;       // we're doing nothing
 	
 	/*
 		Configuration config = getResources().getConfiguration();
@@ -215,6 +220,44 @@ public class BluetoothMessage extends Activity {
     	
     }
     
+    public void selectFileToTransfer() {
+    	Intent intent = new Intent();
+    	intent.setType("image/*");
+    	intent.setAction(Intent.ACTION_GET_CONTENT);
+    	startActivityForResult(Intent.createChooser(intent, "Select Picture"), IMAGE_PATH_BROWSE);
+    }
+    
+    public void transferFile(String path) {
+    	
+		File file = new File(path);
+    	
+		// sends specified (image) file using default applications
+    	Intent intent = new Intent();
+    	intent.setAction(Intent.ACTION_SEND);
+    	intent.setType("*/*");
+    	intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(file));
+    	startActivity(intent);
+		
+    }
+    
+    protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
+    	if(requestCode == IMAGE_PATH_BROWSE) {
+    		if(resultCode == RESULT_OK) {
+    			Uri uri = intent.getData();
+    			if (uri.getScheme().toString().compareTo("content")==0) {      
+    				Cursor cursor =getContentResolver().query(uri, null, null, null, null);
+    				if (cursor.moveToFirst()) {
+    					int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA); // or "_data" instead of "MediaStore.Images.Media.DATA"
+    					Uri filePathUri = Uri.parse(cursor.getString(column_index));
+    					String file_name = filePathUri.getLastPathSegment().toString();
+    					String file_path=filePathUri.getPath();
+    					transferFile(file_path);
+    				}
+    			}
+    		}
+    	}
+    }
+    
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
@@ -230,7 +273,8 @@ public class BluetoothMessage extends Activity {
     		saveToFile();
     		break;
     	case R.id.action_camera:
-    		Toast.makeText(this, "Launching camera!", Toast.LENGTH_SHORT).show();
+    		Toast.makeText(this, "Choose picture to send!", Toast.LENGTH_SHORT).show();
+    		selectFileToTransfer();
     		break;
     	default:
     		break;
