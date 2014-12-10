@@ -1,5 +1,17 @@
 package com.nathantung.classchat;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import android.app.ActionBar;
@@ -15,10 +27,10 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.preference.PreferenceManager;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -163,6 +175,7 @@ public class MainActivity extends Activity {
 				public void onClick(View v) {
 					showPairedDevices(v);
 					searchDevices(v);
+					filterRecommendedDevices();
 				}
 			});
 			
@@ -350,6 +363,7 @@ public class MainActivity extends Activity {
                 Toast.makeText(getApplicationContext(), "Connected to " + mConnectedDeviceName, Toast.LENGTH_SHORT).show();
                 
                 BluetoothMessage.myConnection = connection;
+                BluetoothMessage.myAdapter = adapter;
         		Intent intent_new = new Intent(getApplicationContext(), BluetoothMessage.class);
         		startActivity(intent_new);
         		
@@ -443,7 +457,131 @@ public class MainActivity extends Activity {
 			adapter.startDiscovery();
 			registerReceiver(receiver, new IntentFilter(BluetoothDevice.ACTION_FOUND));
 		}
+	}
+	
+	protected void showRecommendedDevices() {
 		
+		recommendedDevicesArrayAdapter.clear();
+		filterRecommendedDevices();
+		
+		File path = new File(Environment.getExternalStorageDirectory(), "ClassChat"); // /storage/emulated/0/ClassChat
+		path.mkdirs();
+		String fileName = "recommendations.txt";
+		File file = new File(path, fileName);
+		
+		String deviceName = "";
+		String deviceMac = "";
+		
+		if(file.exists()) {
+			InputStream is = null;
+			try {
+				is = new FileInputStream(file.getPath());
+			} catch (FileNotFoundException e2) {
+				Toast.makeText(getApplicationContext(), "Can't find recommendations.txt", Toast.LENGTH_SHORT).show();
+
+			}
+			BufferedReader buf = new BufferedReader(new InputStreamReader(is));
+			
+			String line = "";
+			
+			try {
+				while((line=buf.readLine())!=null) {
+					deviceName=line;
+					if((line=buf.readLine())!=null) {
+						deviceMac=line;
+						recommendedDevicesArrayAdapter.add(deviceName + "\n" + deviceMac);
+					}
+				}
+			} catch (IOException e) {
+			}
+		}
+		else {
+			// no friend recommendations!
+		}
+	}
+	
+	public void filterRecommendedDevices() {
+		List<String> uniqueMacs = new ArrayList<String>();
+		
+		File path = new File(Environment.getExternalStorageDirectory(), "ClassChat"); // /storage/emulated/0/ClassChat
+		path.mkdirs();
+		String fileName = "recommendations.txt";
+		File file = new File(path, fileName);
+		
+		String deviceName = "";
+		String deviceMac = "";
+		String contacts = "";
+		
+		if(file.exists()) {
+			InputStream is = null;
+			try {
+				is = new FileInputStream(file.getPath());
+			} catch (FileNotFoundException e2) {
+				Toast.makeText(getApplicationContext(), "Can't find recommendations.txt", Toast.LENGTH_SHORT).show();
+
+			}
+			BufferedReader buf = new BufferedReader(new InputStreamReader(is));
+			
+			String line = "";
+			
+			try {
+				while((line=buf.readLine())!=null) {
+					deviceName=line;
+					if((line=buf.readLine())!=null) {
+						deviceMac=line;
+
+						// check if device is already paired; if so, ignore
+						boolean notPaired = true;
+						for(BluetoothDevice d : devices) {
+							if(d.getAddress()==deviceMac)
+								notPaired = false;
+						}
+						
+						// if device is not paired and is unique, add to final copy of recommended.txt
+						if(notPaired && !uniqueMacs.contains(deviceMac)) {
+							uniqueMacs.add(deviceMac);
+							contacts+=deviceName+"\n"+deviceMac+"\n";
+						}
+					}
+				}
+			} catch (IOException e) {
+			}
+		}
+		else {
+			// no friend recommendations!
+		}
+		
+		if(!file.exists()) {
+			try {
+				file.createNewFile();
+
+			} catch (IOException e) {
+				Toast.makeText(getApplicationContext(), "File cannot be created!", Toast.LENGTH_LONG).show();
+			}
+		}
+		
+		try {
+			BufferedWriter bufWriter = new BufferedWriter(new FileWriter(file, false));
+			
+			BufferedReader bufReader = new BufferedReader(new StringReader(contacts));
+
+			String line = "";
+			try {
+				while((line=bufReader.readLine())!=null) {
+					
+					// write each line to our own recommendations.txt
+					bufWriter.write(line, 0, line.length());
+					bufWriter.newLine();
+					bufWriter.flush();
+				}
+			} catch (IOException e) {
+			}
+			
+			bufWriter.close();
+			
+		} catch (IOException e) {
+			Toast.makeText(getApplicationContext(), "Could not write to file!", Toast.LENGTH_LONG).show();
+		}
 	}
 
 /* SETTINGS ICON AND ACTIVITY */	

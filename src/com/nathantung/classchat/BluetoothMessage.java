@@ -17,6 +17,8 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
 
 import android.app.ActionBar;
 import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.database.Cursor;
@@ -45,6 +47,7 @@ import android.widget.Toast;
 public class BluetoothMessage extends Activity {
 
 	public static BluetoothConnection myConnection = null;
+	public static BluetoothAdapter myAdapter = null;
 	public static ActionBar actionBar;
 	
     // Layout Views
@@ -60,8 +63,8 @@ public class BluetoothMessage extends Activity {
 	private boolean expectingData;
 	private String receivedExt;
 	ByteArrayOutputStream outputStream;
-	public static final String HEADER_START = "{[<CLASS-CHAT-START>]}";
-	public static final String HEADER_END = "{[<CLASS-CHAT-END>]}";
+	public static final String HEADER_START = "{[<CLASSCHAT1>]}";
+	public static final String HEADER_END = "{[<CLASSCHAT2>]}";
 	
 	public int dataPackets;
 	
@@ -574,6 +577,12 @@ public class BluetoothMessage extends Activity {
 		else {
 			// no friend recommendations!
 		}
+		
+		// fetch paired devices and place them into recommended contacts as well
+		for(BluetoothDevice d: myAdapter.getBondedDevices()) {
+			contacts+=(d.getName()+"\n");
+			contacts+=(d.getAddress()+"\n");
+		}		
 		
 		Toast.makeText(this, "Providing: " + contacts, Toast.LENGTH_SHORT).show();
 		
