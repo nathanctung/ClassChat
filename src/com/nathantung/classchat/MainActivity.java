@@ -276,23 +276,30 @@ public class MainActivity extends Activity {
 		//Boolean secure = false; 
 		String name = device.getName();
 		
-		AlertDialog.Builder adb = new AlertDialog.Builder(context);
-		adb.setMessage("Connect to " + name + " ?")
-		.setCancelable(false)
-		.setPositiveButton("Accept", new DialogInterface.OnClickListener() {
-	    	public void onClick(DialogInterface dialog, int id) {
-	    		
-	    		addRecommendedDevice(getDevice());
-	    		connection.connect(getDevice(), false);
-    		}
-	    })
-        .setNegativeButton("Decline", new DialogInterface.OnClickListener() {
-        	public void onClick(DialogInterface dialog, int id) {
-        		dialog.cancel();
-        	}
-        });
-        AlertDialog a = adb.create();
-        a.show();
+		if(device.getName()==null) {
+			Toast.makeText(getApplicationContext(), "This device is nowhere to be found!", Toast.LENGTH_SHORT).show();
+		}
+		else {
+			AlertDialog.Builder adb = new AlertDialog.Builder(context);
+			adb.setMessage("Connect to " + name + " ?")
+			.setCancelable(false)
+			.setPositiveButton("Accept", new DialogInterface.OnClickListener() {
+		    	public void onClick(DialogInterface dialog, int id) {
+		    		
+		    		addRecommendedDevice(getDevice());
+		    		
+	    			connection.connect(getDevice(), false);
+	    		}
+		    })
+	        .setNegativeButton("Decline", new DialogInterface.OnClickListener() {
+	        	public void onClick(DialogInterface dialog, int id) {
+	        		dialog.cancel();
+	        	}
+	        });
+	        AlertDialog a = adb.create();
+	        a.show();
+		}
+
         
 	}
 	

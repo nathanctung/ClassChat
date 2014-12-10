@@ -63,8 +63,10 @@ public class BluetoothMessage extends Activity {
 	private boolean expectingData;
 	private String receivedExt;
 	ByteArrayOutputStream outputStream;
-	public static final String HEADER_START = "{[<CLASSCHAT1>]}";
-	public static final String HEADER_END = "{[<CLASSCHAT2>]}";
+	public static final String HEADER_START = "{[<CLCH1>]}";
+	public static final String HEADER_END = "{[<CLCH2>]}";
+	public static final String RECOMMENDED_FRIEND_REQUEST = "F_RQ";
+	public static final String RECOMMENDED_FRIEND_RESPONSE = "F_RS";
 	
 	public int dataPackets;
 	
@@ -192,10 +194,10 @@ public class BluetoothMessage extends Activity {
 							  
 							  
 						  }
-						  else if(message.contains("REQUEST_FRIENDS")) {
+						  else if(message.contains(RECOMMENDED_FRIEND_REQUEST)) {
 							  respondFriendRecommendations();
 						  }
-						  else if(message.contains("RESPONSE_FRIENDS")) {
+						  else if(message.contains(RECOMMENDED_FRIEND_RESPONSE)) {
 							  
 							  String contacts = outputStream.toString();
 							  Log.d("CONTACTS", contacts);
@@ -298,11 +300,6 @@ public class BluetoothMessage extends Activity {
 		super.onDestroy();
 
 		if(myConnection.getState()==BluetoothConnection.STATE_CONNECTED) {
-		
-			if(mConversationArrayAdapter!=null) {
-				sendMessage("CONNECTION CLOSED!");
-			}
-			
 			myConnection.endConnection();
 		}
 		
@@ -424,7 +421,7 @@ public class BluetoothMessage extends Activity {
     	Intent intent = new Intent();
     	intent.setType("image/*");
     	intent.setAction(Intent.ACTION_GET_CONTENT);
-    	startActivityForResult(Intent.createChooser(intent, "Select Picture"), IMAGE_PATH_BROWSE);
+    	startActivityForResult(Intent.createChooser(intent, "Select picture to send!"), IMAGE_PATH_BROWSE);
     }
     
     public void transferFile(String path) {
@@ -533,7 +530,7 @@ public class BluetoothMessage extends Activity {
 		Toast.makeText(this, "Requesting friend recommendations!", Toast.LENGTH_SHORT).show();
 
 		String headerStart = HEADER_START;
-		String headerEnd = "REQUEST_FRIENDS" + HEADER_END;
+		String headerEnd = RECOMMENDED_FRIEND_REQUEST + HEADER_END;
 		
 		sendMessage(headerStart);
 		sendMessage(headerEnd);
@@ -551,7 +548,7 @@ public class BluetoothMessage extends Activity {
 		File file = new File(path, fileName);
     	
 		String headerStart = HEADER_START;
-		String headerEnd = "RESPONSE_FRIENDS" + HEADER_END;
+		String headerEnd = RECOMMENDED_FRIEND_RESPONSE + HEADER_END;
 		
 		String contacts = "";
 		
@@ -584,7 +581,7 @@ public class BluetoothMessage extends Activity {
 			contacts+=(d.getAddress()+"\n");
 		}		
 		
-		Toast.makeText(this, "Providing: " + contacts, Toast.LENGTH_SHORT).show();
+		Toast.makeText(this, "Providing contacts: " + contacts, Toast.LENGTH_SHORT).show();
 		
 		sendMessage(headerStart);
 		sendMessage(contacts);
