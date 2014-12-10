@@ -26,6 +26,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -175,7 +177,7 @@ public class MainActivity extends Activity {
 				public void onClick(View v) {
 					showPairedDevices(v);
 					searchDevices(v);
-					filterRecommendedDevices();
+					showRecommendedDevices();
 				}
 			});
 			
@@ -279,6 +281,8 @@ public class MainActivity extends Activity {
 		.setCancelable(false)
 		.setPositiveButton("Accept", new DialogInterface.OnClickListener() {
 	    	public void onClick(DialogInterface dialog, int id) {
+	    		
+	    		addRecommendedDevice(getDevice());
 	    		connection.connect(getDevice(), false);
     		}
 	    })
@@ -533,12 +537,12 @@ public class MainActivity extends Activity {
 						// check if device is already paired; if so, ignore
 						boolean notPaired = true;
 						for(BluetoothDevice d : devices) {
-							if(d.getAddress()==deviceMac)
+							if(d.getAddress().equals(deviceMac))
 								notPaired = false;
 						}
 						
 						// if device is not paired and is unique, add to final copy of recommended.txt
-						if(notPaired && !uniqueMacs.contains(deviceMac)) {
+						if(notPaired && !uniqueMacs.contains(deviceMac) && !deviceMac.equals(adapter.getAddress())) {
 							uniqueMacs.add(deviceMac);
 							contacts+=deviceName+"\n"+deviceMac+"\n";
 						}
@@ -576,6 +580,41 @@ public class MainActivity extends Activity {
 				}
 			} catch (IOException e) {
 			}
+			
+			bufWriter.close();
+			
+		} catch (IOException e) {
+			Toast.makeText(getApplicationContext(), "Could not write to file!", Toast.LENGTH_LONG).show();
+		}
+	}
+	
+	public void addRecommendedDevice(BluetoothDevice newDevice) {
+
+		String name = newDevice.getName();
+		String macAddress = newDevice.getAddress();
+		
+		File path = new File(Environment.getExternalStorageDirectory(), "ClassChat"); // /storage/emulated/0/ClassChat
+		path.mkdirs();
+		String fileName = "recommendations.txt";
+		File file = new File(path, fileName);
+		
+		if(!file.exists()) {
+			try {
+				file.createNewFile();
+			} catch (IOException e) {
+				Toast.makeText(getApplicationContext(), "File cannot be created!", Toast.LENGTH_LONG).show();
+			}
+		}
+		
+		try {
+			BufferedWriter bufWriter = new BufferedWriter(new FileWriter(file, true));
+
+			bufWriter.write(name, 0, name.length());
+			bufWriter.newLine();
+			bufWriter.flush();
+			bufWriter.write(macAddress, 0, macAddress.length());
+			bufWriter.newLine();
+			bufWriter.flush();
 			
 			bufWriter.close();
 			
