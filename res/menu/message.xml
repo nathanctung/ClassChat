@@ -3,6 +3,13 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="com.nathantung.classchat.MainActivity" >
 
+	<item
+		android:id="@+id/action_friends"
+		android:icon="@drawable/ic_menu_allfriends"
+		android:orderInCategory="100"
+		android:showAsAction="always"
+		android:title="Get Friends"/> 
+    
     <item
         android:id="@+id/action_save"
         android:icon="@drawable/ic_menu_save"
@@ -15,6 +22,6 @@
         android:icon="@drawable/ic_menu_camera"
         android:orderInCategory="100"
         android:showAsAction="always"
-        android:title="Camera"/> 
+        android:title="Camera"/>
 
 </menu>

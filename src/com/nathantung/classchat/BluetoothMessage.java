@@ -1,13 +1,16 @@
 package com.nathantung.classchat;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.util.Arrays;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.StringReader;
 import java.util.Calendar;
 
 import org.apache.commons.io.output.ByteArrayOutputStream;
@@ -17,10 +20,13 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Base64;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -50,13 +56,14 @@ public class BluetoothMessage extends Activity {
     // MainActivity Variables
 	private StringBuffer mOutStringBuffer;
 	
-	private boolean sendingData = false;
-	private boolean expectingData = false;
-	private String receivedExt = "";
-	ByteArrayOutputStream outputStream = null;
+	private boolean sendingData;
+	private boolean expectingData;
+	private String receivedExt;
+	ByteArrayOutputStream outputStream;
 	public static final String HEADER_START = "{[<CLASS-CHAT-START>]}";
 	public static final String HEADER_END = "{[<CLASS-CHAT-END>]}";
 	
+	public int dataPackets;
 	
 	// Activity States
     public static final int IMAGE_PATH_BROWSE = 5;       // we're doing nothing
@@ -70,6 +77,13 @@ public class BluetoothMessage extends Activity {
 		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 		
 		actionBar = getActionBar();
+		
+		// reset variables
+		sendingData = false;
+		expectingData = false;
+		receivedExt = "";
+		outputStream = null;
+		dataPackets = 0;
 		
 		// Initialize the array adapter for the conversation thread
         //mConversationArrayAdapter = new ArrayAdapter<String>(this, R.layout.single_message, R.id.messageText);
@@ -124,12 +138,16 @@ public class BluetoothMessage extends Activity {
 				  
 				  // writing own messages to array adapter
 				  if(source.equals("Me")) {
+					  
 					  if(writeMessage.contains(HEADER_START)) {
 						  sendingData = true;
 					  }
 					  else if(writeMessage.contains(HEADER_END)) {
 						  sendingData = false;
-						  mConversationArrayAdapter.add("*Your image was sent! It may take some time to be transferred.");
+						  
+						  if(writeMessage.contains("IMAGE")) {
+							  mConversationArrayAdapter.add("*Your image was sent! It may take some time to be transferred.");
+						  }
 					  }
 					  else if(sendingData) {
 						  // do nothing; you're automatically transmitting some data or file
@@ -141,56 +159,78 @@ public class BluetoothMessage extends Activity {
 				  }
 				  // reading received messages to array adapter
 				  else {
-					  					  
+					  
 					  if(!expectingData && message.contains(HEADER_START)) { //received wrapper beginning, no data expected yet
+						  
 						  Log.d("HEADER", message);
+						  
 						  expectingData = true;
 						  outputStream = new ByteArrayOutputStream();
+						  
 					  }
 					  else if(expectingData && message.contains(HEADER_END)) { //received wrapper ending, closing expected data
+						  
 						  Log.d("FOOTER", message);
+						  Log.d("DATAPACKETS", ""+dataPackets);
+						  dataPackets = 0;
+						  
 						  if(message.contains("IMAGE")) {
-							  
+
 							  // set extension of picture file
 							  receivedExt = message.substring(message.indexOf("IMAGE=")+"IMAGE=".length(), message.indexOf(HEADER_END));
-
-							  Log.d("outputStream Size", outputStream.size() + " bytes / " + outputStream.size()/1024 + " kbytes");
 							  
-							  saveImageToFile(outputStream.toByteArray(), receivedExt);
+							  Log.d("outputStreamSize", outputStream.size() + " bytes / " + outputStream.size()/1024 + " kbytes");
+							  
+							  decodeImageToFile(outputStream.toString());
+							  //saveImageToFile(outputStream.toByteArray(), receivedExt);
 							  
 							  mConversationArrayAdapter.add("*You received a(n) " + receivedExt + " image!");
+							  mConversationArrayAdapter.add(outputStream.toString());
 							  
-							  // reset variables
-							  expectingData = false;
 							  
-							  if(outputStream!=null) {
-								  try {
-									  outputStream.close();
-								  } catch (IOException e) {}
-							  }
+						  }
+						  else if(message.contains("REQUEST_FRIENDS")) {
+							  respondFriendRecommendations();
+						  }
+						  else if(message.contains("RESPONSE_FRIENDS")) {
+							  
+							  String contacts = outputStream.toString();
+							  Log.d("CONTACTS", contacts);
+							  handleFriendRecommendations(contacts);
 						  }
 						  else {
 							  // respond to other header types
 						  }
+						  
+						// reset variables
+						  expectingData = false;
+						  
+						  if(outputStream!=null) {
+							  try {
+								  outputStream.close();
+								  Log.d("HEADER_END", "closed outputstream");
+							  } catch (IOException e) {}
+						  }
+						  
 					  }
 					  else if(expectingData) { //in the middle of the wrapper, expecting data and adding to outputStream
 						  Log.d("DATA", new String(bytes));
-						  try {
-							  outputStream.write(bytes);
-							  //outputStream.write(bytes, 0, bytes.length);
-							  //outputStream.flush();
-						  } catch (IOException e) {
-							  Toast.makeText(getApplicationContext(), "Error writing data!", Toast.LENGTH_LONG).show();
-						  }
+						  
+						  dataPackets++;
+						  outputStream.write(bytes, 0, size);
+
 					  }
 					  else if(message.contains(HEADER_START) || message.contains(HEADER_END)) {
-						  // do nothing
+						  // do nothing (get rid of re-reading excess HEADER_END messages)
 					  }
 					  else {
 						  // normal message
 						  mConversationArrayAdapter.add(source + ": " + message);
 					  }
 				  }
+			  }
+			  else {
+				  // do nothing (no message)
 			  }
 		  }
 	}
@@ -208,12 +248,12 @@ public class BluetoothMessage extends Activity {
         if (message.length() > 0) {
             // Get the message bytes and tell the BluetoothChatService to write
             byte[] send = message.getBytes();
+            
             myConnection.write(send);
 
             // Reset out string buffer to zero and clear the edit text field
             mOutStringBuffer.setLength(0);
             mOutEditText.setText(mOutStringBuffer);
-            
         }	
     }
     
@@ -256,8 +296,9 @@ public class BluetoothMessage extends Activity {
 
 		if(myConnection.getState()==BluetoothConnection.STATE_CONNECTED) {
 		
-			if(mConversationArrayAdapter!=null)
-				mConversationArrayAdapter.add("Connection terminated!");
+			if(mConversationArrayAdapter!=null) {
+				sendMessage("CONNECTION CLOSED!");
+			}
 			
 			myConnection.endConnection();
 		}
@@ -269,8 +310,7 @@ public class BluetoothMessage extends Activity {
 		File path = new File(Environment.getExternalStorageDirectory(), "ClassChat"); // /storage/emulated/0/ClassChat
 		path.mkdirs();
 
-		Calendar c = Calendar.getInstance();
-		String fileName = "convo-"+c.get(Calendar.MONTH)+"-"+c.get(Calendar.DATE)+"-"+c.get(Calendar.YEAR)+"-"+c.get(Calendar.HOUR)+c.get(Calendar.MINUTE)+c.get(Calendar.SECOND)+".txt";
+		String fileName = "convo-" + filenameNow() + ".txt";
 		
 		File file = new File(path, fileName);
     	
@@ -312,16 +352,45 @@ public class BluetoothMessage extends Activity {
     	
     }
     
+    public void decodeImageToFile(String data) {
+    	byte[] decodedString = Base64.decode(data, Base64.DEFAULT);
+    	Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+    	
+		File path = new File(Environment.getExternalStorageDirectory(), "ClassChat"); // /storage/emulated/0/ClassChat
+		path.mkdirs();
+		String fileName = "image-"+ filenameNow() + ".png";
+    	
+		Log.d("decodedbyte", "decoded");
+		
+		FileOutputStream out = null;
+		try {
+		    out = new FileOutputStream(fileName);
+		    decodedByte.compress(Bitmap.CompressFormat.PNG, 100, out);
+		    
+		    Log.d("decodedbyte", "compressed into png");    
+		    
+		} catch (Exception e) {
+		    Toast.makeText(getApplicationContext(), "Bitmap could not be saved!", Toast.LENGTH_LONG).show();
+		} finally {
+		    try {
+		        if (out != null) {
+		            out.close();
+		        }
+		    } catch (IOException e) {
+			    Toast.makeText(getApplicationContext(), "Bitmap could not be saved!", Toast.LENGTH_LONG).show();
+		    }
+		}
+    }
+    
     public void saveImageToFile(byte[] data, String ext) {
 
 		File path = new File(Environment.getExternalStorageDirectory(), "ClassChat"); // /storage/emulated/0/ClassChat
 		path.mkdirs();
 
-		Calendar c = Calendar.getInstance();
-		String fileName = "image-"+c.get(Calendar.MONTH)+"-"+c.get(Calendar.DATE)+"-"+c.get(Calendar.YEAR)+"-"+c.get(Calendar.HOUR)+c.get(Calendar.MINUTE)+c.get(Calendar.SECOND)+"."+ext;
+		String fileName = "image-"+ filenameNow() + "."+ext;
 		
 		File file = new File(path, fileName);
-    	
+		
 		if(!file.exists()) {
 			try {
 				file.createNewFile();
@@ -373,11 +442,19 @@ public class BluetoothMessage extends Activity {
 			
 	        // Get the message bytes and tell the BluetoothChatService to write
 			sendMessage(headerStart);
-			sendMessage(data);
+
+			Bitmap bm = BitmapFactory.decodeFile(path);
+			ByteArrayOutputStream baos = new ByteArrayOutputStream();
+			bm.compress(Bitmap.CompressFormat.PNG, 100, baos);
+			byte[] byteImage = baos.toByteArray();
+			String encodedImage = Base64.encodeToString(byteImage, Base64.DEFAULT);
+
+			sendMessage(encodedImage); //sendMessage(data);
+
+			Log.d("encodedImage", encodedImage);
+			
 			sendMessage(headerEnd);
 			
-			//saveImageToFile(data, ext);
-
 		} catch (IOException e) {
 			Toast.makeText(this, "Cannot send picture!", Toast.LENGTH_LONG).show();
 		}
@@ -408,7 +485,7 @@ public class BluetoothMessage extends Activity {
     					Uri filePathUri = Uri.parse(cursor.getString(column_index));
     					String file_name = filePathUri.getLastPathSegment().toString();
     					String file_path=filePathUri.getPath();
-    					transferFile(file_path);
+    					transferFileWithOptions(file_path);
     				}
     			}
     		}
@@ -430,14 +507,129 @@ public class BluetoothMessage extends Activity {
     		saveToFile();
     		break;
     	case R.id.action_camera:
-    		Toast.makeText(this, "Choose picture to send!", Toast.LENGTH_SHORT).show();
+    		Toast.makeText(this, "Select picture to send!", Toast.LENGTH_SHORT).show();
     		selectFileToTransfer();
+    		break;
+    	case R.id.action_friends:
+    		requestFriendRecommendations();
     		break;
     	default:
     		break;
     	}
     	
     	return true;
-    } 
+    }
+    
+    public String filenameNow() {
+    	Calendar c = Calendar.getInstance();
+		return c.get(Calendar.MONTH)+"-"+c.get(Calendar.DATE)+"-"+c.get(Calendar.YEAR)+"-"+c.get(Calendar.HOUR)+c.get(Calendar.MINUTE)+c.get(Calendar.SECOND);
+    }
+    
+    public void requestFriendRecommendations() {
+    	
+		Toast.makeText(this, "Requesting friend recommendations!", Toast.LENGTH_SHORT).show();
+
+		String headerStart = HEADER_START;
+		String headerEnd = "REQUEST_FRIENDS" + HEADER_END;
+		
+		sendMessage(headerStart);
+		sendMessage(headerEnd);
+    }
+    
+    public void respondFriendRecommendations() {
+    	
+		Toast.makeText(this, "Responding to friend recommendation request!", Toast.LENGTH_SHORT).show();
+    	
+    	File path = new File(Environment.getExternalStorageDirectory(), "ClassChat"); // /storage/emulated/0/ClassChat
+		path.mkdirs();
+
+		String fileName = "recommendations.txt";
+		
+		File file = new File(path, fileName);
+    	
+		String headerStart = HEADER_START;
+		String headerEnd = "RESPONSE_FRIENDS" + HEADER_END;
+		
+		String contacts = "";
+		
+		if(file.exists()) {
+			InputStream is = null;
+			try {
+				is = new FileInputStream(file.getPath());
+			} catch (FileNotFoundException e2) {
+				Toast.makeText(getApplicationContext(), "Can't find recommendations.txt", Toast.LENGTH_SHORT).show();
+
+			}
+			BufferedReader buf = new BufferedReader(new InputStreamReader(is));
+			
+			String line = "";
+			
+			try {
+				while((line=buf.readLine())!=null) {
+					contacts+=(line+"\n");
+				}
+			} catch (IOException e) {
+			}
+		}
+		else {
+			// no friend recommendations!
+		}
+		
+		Toast.makeText(this, "Providing: " + contacts, Toast.LENGTH_SHORT).show();
+		
+		sendMessage(headerStart);
+		sendMessage(contacts);
+		sendMessage(headerEnd);
+		
+    }
+    
+    public void handleFriendRecommendations(String contacts) {
+    	
+		Toast.makeText(this, "Handling friend recommendations: " + contacts, Toast.LENGTH_SHORT).show();
+    	
+    	if(contacts.equals("")) {
+    		// no contacts to share!
+    		Toast.makeText(getApplicationContext(), "No recommendations found!", Toast.LENGTH_SHORT);
+    		return;
+    	}
+	
+    	File path = new File(Environment.getExternalStorageDirectory(), "ClassChat"); // /storage/emulated/0/ClassChat
+		path.mkdirs();
+		String fileName = "recommendations.txt";
+		File file = new File(path, fileName);
+    		
+		if(!file.exists()) {
+			try {
+				file.createNewFile();
+	    		Toast.makeText(this, "Created recommendations.txt!", Toast.LENGTH_SHORT).show();
+
+			} catch (IOException e) {
+				Toast.makeText(getApplicationContext(), "File cannot be created!", Toast.LENGTH_LONG).show();
+			}
+		}
+		
+		try {
+			BufferedWriter bufWriter = new BufferedWriter(new FileWriter(file, true));
+			
+			BufferedReader bufReader = new BufferedReader(new StringReader(contacts));
+
+			String line = "";
+			try {
+				while((line=bufReader.readLine())!=null) {
+					
+					// write each line to our own recommendations.txt
+					bufWriter.write(line, 0, line.length());
+					bufWriter.newLine();
+					bufWriter.flush();
+				}
+			} catch (IOException e) {
+			}
+			
+			bufWriter.close();
+			
+		} catch (IOException e) {
+			Toast.makeText(getApplicationContext(), "Could not write to file!", Toast.LENGTH_LONG).show();
+		}
+    }
     
 }

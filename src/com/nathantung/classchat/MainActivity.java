@@ -310,7 +310,6 @@ public class MainActivity extends Activity {
                 switch (msg.arg1) {
                 case BluetoothConnection.STATE_CONNECTED:
                     setStatus(getString(R.string.title_connected_to, mConnectedDeviceName));
-                    //mConversationArrayAdapter.clear();
                     break;
                 case BluetoothConnection.STATE_CONNECTING:
                     setStatus(R.string.title_connecting);
@@ -325,24 +324,24 @@ public class MainActivity extends Activity {
             case MESSAGE_WRITE:
                 byte[] writeBuf = (byte[]) msg.obj;
                 // construct a string from the buffer
-                String writeMessage = new String(writeBuf);
-                //mConversationArrayAdapter.add("Me:  " + writeMessage);
-                String writeLine = "Me:  " + writeMessage;
+                //String writeMessage = new String(writeBuf);
+                
                 Intent intent_write = new Intent(getApplicationContext(), BluetoothMessage.class);
-                intent_write.putExtra("new_line", writeLine);
+                intent_write.putExtra("source", "Me");
+                intent_write.putExtra("buf", writeBuf);
         		startActivity(intent_write);
                 
                 break;
             case MESSAGE_READ:
                 byte[] readBuf = (byte[]) msg.obj;
                 // construct a string from the valid bytes in the buffer
-                String readMessage = new String(readBuf, 0, msg.arg1);
-                //mConversationArrayAdapter.add(mConnectedDeviceName + ":  " + readMessage);
-                String readLine = mConnectedDeviceName + ":  " + readMessage;
-                Intent intent_read = new Intent(getApplicationContext(), BluetoothMessage.class);
-                intent_read.putExtra("new_line", readLine);
-        		startActivity(intent_read);
+                //String readMessage = new String(readBuf, 0, msg.arg1);
                 
+                Intent intent_read = new Intent(getApplicationContext(), BluetoothMessage.class);
+                intent_read.putExtra("source", mConnectedDeviceName);
+                intent_read.putExtra("buf", readBuf);
+                intent_read.putExtra("size", msg.arg1);
+        		startActivity(intent_read);
                 
                 break;
             case MESSAGE_DEVICE_NAME:
