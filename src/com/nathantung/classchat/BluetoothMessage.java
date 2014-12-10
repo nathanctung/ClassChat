@@ -2,9 +2,15 @@ package com.nathantung.classchat;
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 import java.util.Calendar;
+
+import org.apache.commons.io.output.ByteArrayOutputStream;
 
 import android.app.ActionBar;
 import android.app.Activity;
@@ -15,6 +21,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -42,20 +49,17 @@ public class BluetoothMessage extends Activity {
 
     // MainActivity Variables
 	private StringBuffer mOutStringBuffer;
-
+	
+	private boolean sendingData = false;
+	private boolean expectingData = false;
+	private String receivedExt = "";
+	ByteArrayOutputStream outputStream = null;
+	public static final String HEADER_START = "{[<CLASS-CHAT-START>]}";
+	public static final String HEADER_END = "{[<CLASS-CHAT-END>]}";
+	
+	
 	// Activity States
     public static final int IMAGE_PATH_BROWSE = 5;       // we're doing nothing
-	
-	/*
-		Configuration config = getResources().getConfiguration();
-		FragmentManager fragmentManager = getSupportFragmentManager();
-		FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-		
-		Fragment messageFragment = new MessageFragment();
-		fragmentTransaction.replace(android.R.id.content, messageFragment);		
-		fragmentTransaction.commit();
-    */
-	
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -105,12 +109,90 @@ public class BluetoothMessage extends Activity {
 		  Bundle extras = currIntent.getExtras();
 		  
 		  if(extras!=null) {
-			  String line = currIntent.getExtras().getString("new_line");
+			  String source = currIntent.getExtras().getString("source");
+			  byte[] bytes = currIntent.getExtras().getByteArray("buf");
 			  
-			  if(line!=null)
-				  mConversationArrayAdapter.add(line);
+			  // write message
+			  String writeMessage = new String(bytes);
+			  
+			  // read message:
+			  int size = currIntent.getExtras().getInt("size");
+			  String message = new String(bytes, 0, size);
+			  
+			  // if a message was generated...
+			  if(source!=null && (message!=null || writeMessage!=null)) {
+				  
+				  // writing own messages to array adapter
+				  if(source.equals("Me")) {
+					  if(writeMessage.contains(HEADER_START)) {
+						  sendingData = true;
+					  }
+					  else if(writeMessage.contains(HEADER_END)) {
+						  sendingData = false;
+						  mConversationArrayAdapter.add("*Your image was sent! It may take some time to be transferred.");
+					  }
+					  else if(sendingData) {
+						  // do nothing; you're automatically transmitting some data or file
+					  }
+					  else {
+						// normal message
+						  mConversationArrayAdapter.add(source + ": " + writeMessage);
+					  }
+				  }
+				  // reading received messages to array adapter
+				  else {
+					  					  
+					  if(!expectingData && message.contains(HEADER_START)) { //received wrapper beginning, no data expected yet
+						  Log.d("HEADER", message);
+						  expectingData = true;
+						  outputStream = new ByteArrayOutputStream();
+					  }
+					  else if(expectingData && message.contains(HEADER_END)) { //received wrapper ending, closing expected data
+						  Log.d("FOOTER", message);
+						  if(message.contains("IMAGE")) {
+							  
+							  // set extension of picture file
+							  receivedExt = message.substring(message.indexOf("IMAGE=")+"IMAGE=".length(), message.indexOf(HEADER_END));
+
+							  Log.d("outputStream Size", outputStream.size() + " bytes / " + outputStream.size()/1024 + " kbytes");
+							  
+							  saveImageToFile(outputStream.toByteArray(), receivedExt);
+							  
+							  mConversationArrayAdapter.add("*You received a(n) " + receivedExt + " image!");
+							  
+							  // reset variables
+							  expectingData = false;
+							  
+							  if(outputStream!=null) {
+								  try {
+									  outputStream.close();
+								  } catch (IOException e) {}
+							  }
+						  }
+						  else {
+							  // respond to other header types
+						  }
+					  }
+					  else if(expectingData) { //in the middle of the wrapper, expecting data and adding to outputStream
+						  Log.d("DATA", new String(bytes));
+						  try {
+							  outputStream.write(bytes);
+							  //outputStream.write(bytes, 0, bytes.length);
+							  //outputStream.flush();
+						  } catch (IOException e) {
+							  Toast.makeText(getApplicationContext(), "Error writing data!", Toast.LENGTH_LONG).show();
+						  }
+					  }
+					  else if(message.contains(HEADER_START) || message.contains(HEADER_END)) {
+						  // do nothing
+					  }
+					  else {
+						  // normal message
+						  mConversationArrayAdapter.add(source + ": " + message);
+					  }
+				  }
+			  }
 		  }
-		  
 	}
 	
     private void sendMessage(String message) {
@@ -131,6 +213,26 @@ public class BluetoothMessage extends Activity {
             // Reset out string buffer to zero and clear the edit text field
             mOutStringBuffer.setLength(0);
             mOutEditText.setText(mOutStringBuffer);
+            
+        }	
+    }
+    
+    private void sendMessage(byte[] bytes) {
+
+    	// Check that we're actually connected before trying anything
+
+    	if (myConnection.getState() != BluetoothConnection.STATE_CONNECTED) {
+            Toast.makeText(this, R.string.not_connected, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Check that there's actually something to send
+        if (bytes!=null) {
+            // Get the message bytes and tell the BluetoothChatService to write
+            myConnection.write(bytes);
+
+            // Reset out string buffer to zero and clear the edit text field
+            mOutStringBuffer.setLength(0);
             
         }	
     }
@@ -155,22 +257,12 @@ public class BluetoothMessage extends Activity {
 		if(myConnection.getState()==BluetoothConnection.STATE_CONNECTED) {
 		
 			if(mConversationArrayAdapter!=null)
-				mConversationArrayAdapter.add("CONNECTION TERMINATED!");
+				mConversationArrayAdapter.add("Connection terminated!");
 			
 			myConnection.endConnection();
 		}
 		
 	}
-    
-    /*
-     * 
-     * new File(getFilesDir(), "ClassChat"); // /data/data/com.nathantung.classchat/files/ClassChat
-     * getApplicationContext().getDir("Test", Context.MODE_PRIVATE); // /data /data/data/com.nathantung.classchat/app_Test
-     * Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS); // /storage/emulated/0/Download 
-     * Environment.getExternalStorageDirectory(); // /storage/emulated/0
-     * Environment.getDataDirectory(); // /data
-     * 
-     */
     
     public void saveToFile() {
 
@@ -220,6 +312,42 @@ public class BluetoothMessage extends Activity {
     	
     }
     
+    public void saveImageToFile(byte[] data, String ext) {
+
+		File path = new File(Environment.getExternalStorageDirectory(), "ClassChat"); // /storage/emulated/0/ClassChat
+		path.mkdirs();
+
+		Calendar c = Calendar.getInstance();
+		String fileName = "image-"+c.get(Calendar.MONTH)+"-"+c.get(Calendar.DATE)+"-"+c.get(Calendar.YEAR)+"-"+c.get(Calendar.HOUR)+c.get(Calendar.MINUTE)+c.get(Calendar.SECOND)+"."+ext;
+		
+		File file = new File(path, fileName);
+    	
+		if(!file.exists()) {
+			try {
+				file.createNewFile();
+			} catch (IOException e) {
+				Toast.makeText(getApplicationContext(), "File cannot be created!", Toast.LENGTH_LONG).show();
+			}
+		}
+		
+		FileOutputStream fos;
+		
+		try {
+			fos = new FileOutputStream(file.getPath());
+			fos.write(data);
+			fos.close();
+			
+		} catch (FileNotFoundException e1) {
+			Toast.makeText(getApplicationContext(), "Could not write to file!", Toast.LENGTH_LONG).show();
+		}
+		catch (IOException e2) {
+			Toast.makeText(getApplicationContext(), "Could not write to file!", Toast.LENGTH_LONG).show();
+		}
+		
+		Toast.makeText(getApplicationContext(), "Saved as " + fileName, Toast.LENGTH_LONG).show();
+    	
+    }
+    
     public void selectFileToTransfer() {
     	Intent intent = new Intent();
     	intent.setType("image/*");
@@ -228,6 +356,34 @@ public class BluetoothMessage extends Activity {
     }
     
     public void transferFile(String path) {
+    	if (myConnection.getState() != BluetoothConnection.STATE_CONNECTED) {
+            Toast.makeText(this, R.string.not_connected, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+    	File file = new File(path);
+    	byte[] data;
+
+		try {
+			data = org.apache.commons.io.FileUtils.readFileToByteArray(file);
+	    	
+			String ext = path.substring(path.lastIndexOf(".")+1);
+			String headerStart = HEADER_START;
+			String headerEnd = "IMAGE=" + ext + HEADER_END;
+			
+	        // Get the message bytes and tell the BluetoothChatService to write
+			sendMessage(headerStart);
+			sendMessage(data);
+			sendMessage(headerEnd);
+			
+			//saveImageToFile(data, ext);
+
+		} catch (IOException e) {
+			Toast.makeText(this, "Cannot send picture!", Toast.LENGTH_LONG).show();
+		}
+    }
+    
+    public void transferFileWithOptions(String path) {
     	
 		File file = new File(path);
     	
@@ -247,7 +403,8 @@ public class BluetoothMessage extends Activity {
     			if (uri.getScheme().toString().compareTo("content")==0) {      
     				Cursor cursor =getContentResolver().query(uri, null, null, null, null);
     				if (cursor.moveToFirst()) {
-    					int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA); // or "_data" instead of "MediaStore.Images.Media.DATA"
+    					// or "_data" instead of "MediaStore.Images.Media.DATA"
+    					int column_index = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
     					Uri filePathUri = Uri.parse(cursor.getString(column_index));
     					String file_name = filePathUri.getLastPathSegment().toString();
     					String file_path=filePathUri.getPath();
