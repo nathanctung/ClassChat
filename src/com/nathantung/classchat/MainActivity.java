@@ -92,6 +92,9 @@ public class MainActivity extends Activity {
 	private Set<BluetoothDevice> devices;
 	private SharedPreferences preferences;
 	
+	final Context context = this;
+	private BluetoothDevice dev;
+	
 /* ON INITIALIZATION */
 	
 	@Override
@@ -236,6 +239,14 @@ public class MainActivity extends Activity {
 		
 	}
 	
+	public void setDevice(BluetoothDevice device) {
+		dev = device;
+	}
+	
+	public BluetoothDevice getDevice() {
+		return dev;
+	}
+	
 	protected void setupConnection(View v, int position, ArrayAdapter<String> arrayAdapter) {
 		
 		// obtain mac address of clicked device
@@ -245,10 +256,27 @@ public class MainActivity extends Activity {
 		
 		// reconstruct device using mac address
 		BluetoothDevice device = adapter.getRemoteDevice(mac);
+		setDevice(device);
 		
-		Boolean secure = false;
+		//Boolean secure = false; 
+		String name = device.getName();
 		
-		connection.connect(device, secure);
+		AlertDialog.Builder adb = new AlertDialog.Builder(context);
+		adb.setMessage("Connect to " + name + " ?")
+		.setCancelable(false)
+		.setPositiveButton("Accept", new DialogInterface.OnClickListener() {
+	    	public void onClick(DialogInterface dialog, int id) {
+	    		connection.connect(getDevice(), false);
+    		}
+	    })
+        .setNegativeButton("Decline", new DialogInterface.OnClickListener() {
+        	public void onClick(DialogInterface dialog, int id) {
+        		dialog.cancel();
+        	}
+        });
+        AlertDialog a = adb.create();
+        a.show();
+        
 	}
 	
 	@Override
